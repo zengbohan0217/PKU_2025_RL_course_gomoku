@@ -31,10 +31,6 @@ class GomokuEnv:
         # 2. 检查该位置是否已经有棋子
         if (x, y) in self.current_white or (x, y) in self.current_black:
             return False
-            
-        # 3. 检查游戏是否已经结束
-        if self.winner is not None:
-            return False
 
         return True
 
@@ -45,8 +41,17 @@ class GomokuEnv:
         :param is_white: bool, True表示白棋，False表示黑棋
         :return: tuple (observation, reward, done, info) - 模仿 Gym 接口
         """
+        done = False
+        info = {}
+        reward = 0
+
         if not self.check_step(action):
-            raise ValueError(f"Invalid action: {action}. Position might be occupied or out of bounds.")
+            print(f"Invalid action: {action}. Position might be occupied or out of bounds.")
+            return (self.current_white, self.current_black), reward, done, info
+        # 检查游戏是否已经结束
+        if self.winner is not None:
+            print(f"Game has ended. Winner: {self.winner}")
+            return (self.current_white, self.current_black), reward, done, info
 
         # 更新棋盘状态
         if is_white:
@@ -61,10 +66,6 @@ class GomokuEnv:
         # 注意：这里我们只检查当前落子的这一方是否获胜
         current_player_positions = self.current_white if is_white else self.current_black
         won = self.check_winner(action, current_player_positions)
-        
-        done = False
-        info = {}
-        reward = 0
 
         if won:
             self.winner = "White" if is_white else "Black"
