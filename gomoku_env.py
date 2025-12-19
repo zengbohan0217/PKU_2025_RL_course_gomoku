@@ -47,11 +47,11 @@ class GomokuEnv:
 
         if not self.check_step(action):
             print(f"Invalid action: {action}. Position might be occupied or out of bounds.")
-            return (self.current_white, self.current_black), reward, done, info
+            return self.current_white, self.current_black, reward, done, info
         # 检查游戏是否已经结束
         if self.winner is not None:
             print(f"Game has ended. Winner: {self.winner}")
-            return (self.current_white, self.current_black), reward, done, info
+            return self.current_white, self.current_black, reward, done, info
 
         # 更新棋盘状态
         if is_white:
@@ -79,7 +79,7 @@ class GomokuEnv:
             info['winner'] = "Draw"
             self.winner = "Draw"
 
-        return (self.current_white, self.current_black), reward, done, info
+        return self.current_white, self.current_black, reward, done, info
 
     def check_winner(self, last_action, current_player_positions):
         """
