@@ -1,0 +1,6 @@
+results.json
+tools/search_script.sh
+agent_thought/script.sh
+**/__pycache__/
+*.py[cod]
+.DS_Store
