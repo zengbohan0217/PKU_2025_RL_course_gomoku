@@ -4,3 +4,6 @@ agent_thought/script.sh
 **/__pycache__/
 *.py[cod]
 .DS_Store
+
+
+PKU_2025_RL_course_gomoku/game_records/*
