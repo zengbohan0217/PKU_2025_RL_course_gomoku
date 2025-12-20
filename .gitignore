@@ -6,4 +6,4 @@ agent_thought/script.sh
 .DS_Store
 
 
-PKU_2025_RL_course_gomoku/game_records/*
+game_records/
