@@ -62,28 +62,36 @@ class MCTSNode:
                 if (x, y) not in occupied:
                     all_moves.append((x, y))
         
-        # Prioritize moves near existing stones (within 2 cells)
+        # 智能排序候选走法：优先考虑靠近已有棋子、靠近中心的位置
         if occupied:
-            prioritized_moves = []
-            other_moves = []
-            
-            for move in all_moves:
+            def move_priority(move):
+                """计算走法的优先级分数（越高越好）"""
                 mx, my = move
-                is_near = False
-                for ox, oy in occupied:
-                    if abs(mx - ox) <= 2 and abs(my - oy) <= 2:
-                        is_near = True
-                        break
+                score = 0.0
                 
-                if is_near:
-                    prioritized_moves.append(move)
-                else:
-                    other_moves.append(move)
+                # 1. 靠近已有棋子的位置得分更高（距离越近分数越高）
+                min_dist = float('inf')
+                for ox, oy in occupied:
+                    dist = abs(mx - ox) + abs(my - oy)  # 曼哈顿距离
+                    min_dist = min(min_dist, dist)
+                    if dist <= 2:
+                        score += (3 - dist) * 10  # 距离1得20分，距离2得10分
+                
+                # 2. 靠近中心的位置得分更高
+                center_dist = abs(mx - 7) + abs(my - 7)
+                score += (14 - center_dist) * 0.5
+                
+                # 3. 距离最近棋子太远的位置降分
+                if min_dist > 3:
+                    score -= 50
+                
+                return score
             
-            # Use prioritized moves first, then others if needed
-            self.untried_moves = prioritized_moves[:20]  # Limit to top 20 nearby moves
-            if len(self.untried_moves) < 10 and other_moves:
-                self.untried_moves.extend(random.sample(other_moves, min(10, len(other_moves))))
+            # 按优先级排序
+            all_moves.sort(key=move_priority, reverse=True)
+            
+            # 只保留优先级最高的10-12个候选
+            self.untried_moves = all_moves[:12]
         else:
             # For empty board, start near center
             center = (7, 7)
@@ -332,11 +340,21 @@ class MCTSLLMAgent:
             return 0.5  # No winner in simulation
     
     def _select(self, node: MCTSNode) -> MCTSNode:
-        """Select a leaf node using UCB policy."""
+        """
+        Select a leaf node using UCB policy.
+        改进：即使节点未完全扩展，也有概率选择已有子节点（基于UCB），
+        这样可以深入搜索好的分支，而不是总是横向扩展。
+        """
         while not node.is_terminal():
             if not node.is_fully_expanded():
-                return node.expand()
+                # 如果节点未完全扩展，有一定概率选择已有子节点
+                if node.children and random.random() < 0.7:  # 70%概率选择已有子节点
+                    node = node.best_child(self.exploration_weight)
+                else:
+                    # 30%概率扩展新节点
+                    return node.expand()
             else:
+                # 节点完全扩展，选择UCB最高的子节点
                 node = node.best_child(self.exploration_weight)
         return node
     
@@ -392,12 +410,22 @@ class MCTSLLMAgent:
                     if (x, y) not in env.current_white and (x, y) not in env.current_black:
                         return (x, y)
         
-        best_child = max(root.children, key=lambda c: c.visits)
+        # 优先选择访问次数最多的（最被探索的）
+        # 但如果访问次数相同，选择胜率最高的
+        best_child = max(root.children, key=lambda c: (c.visits, c.value / max(c.visits, 1)))
         elapsed = time.time() - start_time
+        
+        # 打印所有子节点的统计信息（用于调试）
+        if self.simulations <= 50:  # 只在模拟次数较少时打印详细信息
+            print(f"  Top candidates:")
+            sorted_children = sorted(root.children, key=lambda c: c.visits, reverse=True)[:5]
+            for i, child in enumerate(sorted_children, 1):
+                win_rate = child.value / max(child.visits, 1)
+                print(f"    {i}. {child.move}: visits={child.visits}, win_rate={win_rate:.3f}")
         
         print(f"[{self.name}] MCTS complete in {elapsed:.2f}s")
         print(f"  Best move: {best_child.move}")
-        print(f"  Visits: {best_child.visits}, Win rate: {best_child.value/best_child.visits:.3f}")
+        print(f"  Visits: {best_child.visits}, Win rate: {best_child.value/max(best_child.visits, 1):.3f}")
         
         return best_child.move
 
